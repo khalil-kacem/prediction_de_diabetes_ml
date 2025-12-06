@@ -53,7 +53,7 @@ with st.form("prediction_form"):
     height = st.number_input("Taille (cm)", min_value=50, max_value=250, value=182)
     bmi = weight / ((height / 100) ** 2)
     hba1c = st.number_input("HbA1c (%)", min_value=3.0, max_value=15.0, value=5.5)
-    glycemia = st.number_input("Glycémie (g/L)", min_value=0.0, max_value=5.0, value=1.0)
+    glycemia = st.number_input("Glycémie (g/L)", min_value=0, max_value=500, value=1.0)
 
     submitted = st.form_submit_button("Prédire")
 
