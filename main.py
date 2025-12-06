@@ -53,12 +53,13 @@ with st.form("prediction_form"):
     height = st.number_input("Taille (cm)", min_value=50, max_value=250, value=182)
     bmi = weight / ((height / 100) ** 2)
     hba1c = st.number_input("HbA1c (%)", min_value=3.0, max_value=15.0, value=5.5)
-    glycemia = st.number_input("Glycémie (g/L)", min_value=0, max_value=500, value=1.0)
+    blood_glucose = st.number_input("Glycémie (mg/dL)", min_value=50, max_value=500, value=100)  # match your model
 
     submitted = st.form_submit_button("Prédire")
 
 # --- Prediction ---
 if submitted:
+    # Create dataframe for model
     df = pd.DataFrame([{
         "gender": gender_mapping.get(gender, 2),
         "age": age,
@@ -67,20 +68,19 @@ if submitted:
         "smoking_history": smoking_mapping.get(smoking_history, 0),
         "bmi": bmi,
         "HbA1c_level": hba1c,
-        "blood_glucose_level": glycemia,
+        "blood_glucose_level": blood_glucose,  # correct name
     }])
 
-    # Scale
+    # Scale input
     df_scaled = scaler.transform(df)
 
     # Predict
     pred_raw = model.predict(df_scaled)[0]
     if hasattr(model, "predict_proba"):
-        prob = model.predict_proba(df_scaled)[0][1]
+        prob = model.predict_proba(df_scaled)[0][1] * 100  # probability in %
     else:
-        prob = float(pred_raw)
+        prob = float(pred_raw) * 100
 
-    prob = float(max(0, min(prob, 1)) * 100)
     prediction = "Diabétique" if pred_raw == 1 else "Non diabétique"
 
     st.success(f"Prédiction : {prediction}")
