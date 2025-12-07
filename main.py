@@ -42,17 +42,17 @@ model = joblib.load(MODEL_LOCAL)
 scaler = joblib.load(SCALER_LOCAL)
 
 # -----------------------------
-#  MAPPINGS
+#  MAPPINGS (UPDATED)
 # -----------------------------
 gender_mapping = {"female": 0, "male": 1, "other": 2}
+
 smoking_mapping = {
     "never": 0,
     "current": 1,
     "former": 2,
-    "notcurrent": 3,
-    "ever": 4,
-    "passive": 5,
-    "not_sure": 6,
+    "ever": 3,
+    "passive": 4,
+    "not_sure": 5,
 }
 
 # -----------------------------
@@ -85,7 +85,7 @@ with col2:
     st.subheader("🩸 Santé & mesures")
     smoking_history = st.selectbox(
         "Historique tabac",
-        ["never", "current", "former", "notcurrent", "ever", "passive", "not_sure"]
+        ["never", "current", "former", "ever", "passive", "not_sure"]
     )
     weight = st.number_input("Poids (kg)", 0, 250, 73)
     height = st.number_input("Taille (cm)", 50, 250, 182)
@@ -94,7 +94,9 @@ with col2:
     st.markdown(f"**IMC calculé :** <span style='color:#4CAF50; font-size:18px;'>🟢 {bmi}</span>", unsafe_allow_html=True)
 
     hba1c = st.number_input("HbA1c (%)", 3.0, 15.0, 5.5)
-    glycemia = st.number_input("Glycémie (g/L)", 0.0, 5.0, 1.0)
+
+    # 💥 GLYCÉMIE CORRECTED RANGE: 10–500
+    glycemia = st.number_input("Glycémie (mg/dL)", 10, 500, 100)
 
 # -----------------------------
 #  PREDICTION BUTTON
