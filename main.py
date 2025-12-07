@@ -4,30 +4,46 @@ import joblib
 import gdown
 import os
 
-st.set_page_config(page_title="Prédiction du diabète", layout="centered")
-st.title("Prédiction du diabète")
+# -----------------------------
+#  PAGE CONFIG
+# -----------------------------
+st.set_page_config(
+    page_title="Prédiction du diabète",
+    page_icon="🩺",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-# --- Google Drive files ---
+# -----------------------------
+#  SIDEBAR
+# -----------------------------
+with st.sidebar:
+    st.title("🩺 Diabetes Predictor")
+    st.write("Remplissez les informations pour prédire si la personne est diabétique ou non.")
+    st.markdown("---")
+    st.info("🔍 Le modèle utilise un Decision Tree + scaling des valeurs.")
+
+# -----------------------------
+#  DOWNLOAD MODEL IF NEEDED
+# -----------------------------
 MODEL_FILE_ID = "1qU-l1xE1OGQj6Z9CllZAEHSmNesCtW7E"
 SCALER_FILE_ID = "1H6Rw9PkI0ohbFgrMoJa_Fr6pK84YB8cY"
 
 MODEL_LOCAL = "decisiontree.pkl"
 SCALER_LOCAL = "scaler.pkl"
 
-# Download model if not exists
 if not os.path.exists(MODEL_LOCAL):
-    st.info("Téléchargement du modèle...")
     gdown.download(f"https://drive.google.com/uc?id={MODEL_FILE_ID}", MODEL_LOCAL, quiet=False)
 
 if not os.path.exists(SCALER_LOCAL):
-    st.info("Téléchargement du scaler...")
     gdown.download(f"https://drive.google.com/uc?id={SCALER_FILE_ID}", SCALER_LOCAL, quiet=False)
 
-# Load model and scaler
 model = joblib.load(MODEL_LOCAL)
 scaler = joblib.load(SCALER_LOCAL)
 
-# --- Mapping dictionaries ---
+# -----------------------------
+#  MAPPINGS
+# -----------------------------
 gender_mapping = {"female": 0, "male": 1, "other": 2}
 smoking_mapping = {
     "never": 0,
@@ -39,49 +55,114 @@ smoking_mapping = {
     "not_sure": 6,
 }
 
-# --- Form ---
-with st.form("prediction_form"):
+# -----------------------------
+#  MAIN TITLE
+# -----------------------------
+st.markdown(
+    """
+    <h1 style="text-align: center;">🧬 Prédiction du Diabète</h1>
+    <p style="text-align: center; color: gray;">
+        Analyse intelligente basée sur un modèle Machine Learning
+    </p>
+    """,
+    unsafe_allow_html=True,
+)
+st.markdown("---")
+
+# -----------------------------
+#  LAYOUT COLUMNS
+# -----------------------------
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("👤 Informations personnelles")
     gender = st.selectbox("Genre", ["male", "female", "other"])
-    age = st.number_input("Âge", min_value=0, max_value=120, value=25)
-    hypertension = st.selectbox("Hypertension", [0, 1], format_func=lambda x: "Oui" if x == 1 else "Non")
-    heart_disease = st.selectbox("Maladie cardiaque", [0, 1], format_func=lambda x: "Oui" if x == 1 else "Non")
+    age = st.number_input("Âge", min_value=1, max_value=120, value=25)
+    hypertension = st.selectbox("Hypertension", [0, 1], format_func=lambda x: "Oui" if x else "Non")
+    heart_disease = st.selectbox("Maladie cardiaque", [0, 1], format_func=lambda x: "Oui" if x else "Non")
+
+with col2:
+    st.subheader("🩸 Santé & mesures")
     smoking_history = st.selectbox(
         "Historique tabac",
         ["never", "current", "former", "notcurrent", "ever", "passive", "not_sure"]
     )
-    weight = st.number_input("Poids (kg)", min_value=0, max_value=200, value=73)
-    height = st.number_input("Taille (cm)", min_value=50, max_value=250, value=182)
-    bmi = weight / ((height / 100) ** 2)
-    hba1c = st.number_input("HbA1c (%)", min_value=3.0, max_value=15.0, value=5.5)
-    blood_glucose = st.number_input("Glycémie (mg/dL)", min_value=50, max_value=500, value=100)  # match your model
+    weight = st.number_input("Poids (kg)", 0, 250, 73)
+    height = st.number_input("Taille (cm)", 50, 250, 182)
+    
+    bmi = round(weight / ((height / 100) ** 2), 2)
+    st.markdown(f"**IMC calculé :** <span style='color:#4CAF50; font-size:18px;'>🟢 {bmi}</span>", unsafe_allow_html=True)
 
-    submitted = st.form_submit_button("Prédire")
+    hba1c = st.number_input("HbA1c (%)", 3.0, 15.0, 5.5)
+    glycemia = st.number_input("Glycémie (g/L)", 0.0, 5.0, 1.0)
 
-# --- Prediction ---
-if submitted:
-    # Create dataframe for model
-    df = pd.DataFrame([{
-        "gender": gender_mapping.get(gender, 2),
+# -----------------------------
+#  PREDICTION BUTTON
+# -----------------------------
+st.markdown("---")
+center = st.columns(3)[1]
+
+with center:
+    predict_btn = st.button("🔮 Prédire", use_container_width=True)
+
+# -----------------------------
+#  PREDICTION LOGIC
+# -----------------------------
+if predict_btn:
+    input_df = pd.DataFrame([{
+        "gender": gender_mapping[gender],
         "age": age,
         "hypertension": hypertension,
         "heart_disease": heart_disease,
-        "smoking_history": smoking_mapping.get(smoking_history, 0),
+        "smoking_history": smoking_mapping[smoking_history],
         "bmi": bmi,
         "HbA1c_level": hba1c,
-        "blood_glucose_level": blood_glucose,  # correct name
+        "blood_glucose_level": glycemia,
     }])
 
-    # Scale input
-    df_scaled = scaler.transform(df)
+    scaled = scaler.transform(input_df)
+    raw_pred = model.predict(scaled)[0]
 
-    # Predict
-    pred_raw = model.predict(df_scaled)[0]
     if hasattr(model, "predict_proba"):
-        prob = model.predict_proba(df_scaled)[0][1] * 100  # probability in %
+        prob = model.predict_proba(scaled)[0][1]
     else:
-        prob = float(pred_raw) * 100
+        prob = float(raw_pred)
 
-    prediction = "Diabétique" if pred_raw == 1 else "Non diabétique"
+    prob = max(0, min(prob, 1))
 
-    st.success(f"Prédiction : {prediction}")
-    st.info(f"Probabilité : {prob:.2f}%")
+    # -------------------------
+    #  RESULT DISPLAY
+    # -------------------------
+    st.markdown("## 🧾 Résultat de l'analyse")
+    
+    if raw_pred == 1:
+        st.error("⚠️ **Diabétique**", icon="🚨")
+    else:
+        st.success("🟢 **Non diabétique**", icon="😊")
+
+    st.write("### 🔢 Probabilité :")
+    st.progress(prob)
+
+    st.markdown(
+        f"""
+        <h3 style='text-align:center;'>
+            🔍 Précision estimée : <b>{prob*100:.2f}%</b>
+        </h3>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.info("Analyse réalisée avec succès ✔️")
+
+# -----------------------------
+#  FOOTER
+# -----------------------------
+st.markdown(
+    """
+    <hr>
+    <p style='text-align:center; color:gray;'>
+        Développé avec ❤️ en Streamlit | Machine Learning Decision Tree
+    </p>
+    """,
+    unsafe_allow_html=True,
+)
